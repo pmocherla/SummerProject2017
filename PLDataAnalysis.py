@@ -1,3 +1,36 @@
+# -*- coding: utf-8 -*-
+"""
+Created on Wed Nov 23 10:32:18 2016
+
+@author: Priyanka Mocherla
+@version: 2.7
+
+Code created to extract the data from sdt files and sort the data into a more understandable format. The functions here scale the data after transforming them into eV and then there is an example code that uses the functions to plot the fits of the data and the extracted values.
+Interval fitting is used to optimise the fit of the Gaussian.
+
+Functions in this module:
+    - tempRamp
+    - openData
+    - data_xy
+    - PLjacobian
+    - scale_PL
+    - find_nearest
+    - peaks
+    - norm_PL
+    - contourplot
+    - Gauss
+    - guess
+    - interval_fitting
+    - interval_minimisation
+    - FWHM
+    - peaks_FWHM_plot
+    - errsFromCov
+    - FWHMErr
+    - peakEnergyError
+
+
+"""
+
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib import gridspec
@@ -619,15 +652,16 @@ def peakEnergyError(cov_mats):
     return np.array(mean_errors)
     
 
-
+#-------------------------------------- Load Data -----------------------------------#
     
-#Enter the name of the sample and the data for the temperature ramp
+#Enter the name of the sample and the corresponding data for the temperature ramp
 sample = 'MAPI'
 tempdata = open("Temp_3.txt",'r')
 
 #Open the data in the required format
 files = openData(sample,tempdata)
 
+#------------------------------------ Example Code ---------------------------------#
 PL_data = {}
 for i in range(len(files)):
     PL_data[ '%02d' % files[i][0]] = np.loadtxt("%02s"%files[i][1])
