@@ -1,3 +1,24 @@
+# -*- coding: utf-8 -*-
+"""
+Created on Wed Nov 23 10:32:18 2016
+@author: Priyanka Mocherla
+@version: 2.7
+Code created to extract the data from sdt files and sort the data into a more understandable format. This code analyses the TRPL data. The data is fitted with a biexponential function and a monoexponential function according to theory and the parameters of the fit are extracted for further analysis.
+
+Functions in this module:
+    - openFile
+    - dataExtraction
+    - IRF
+    - removeBackground
+    - decayIndex
+    - irfPlacement
+    - bi_exp
+    - minimise4D
+    - mono_exp
+    - minimise_2D
+
+"""
+
 import numpy as np
 import glob
 import re
@@ -240,7 +261,7 @@ def minimise2D(TRPLi_data,temp, x, variables, start, steps, irfyi, irf_index, TR
     return final_residual,fit_error
     
 #LIFETIMES ARE GIVEN IN NATURAL UNITS. CONVERT TO REAL UNITS BY MULTIPLYING BY STEP SIZE
-
+#-------------------------------- Load the data -------------------------------#
 dats,bg=  dataExtraction(620)
 dats = removeBackground(dats)
 step = 500/1024.
@@ -248,7 +269,7 @@ index = decayIndex(dats)
 keys = dats.keys()
 
 """
-#Monoexp fitting
+#Fitting the data with a mono-exponential function example code.
 x = np.arange(0,500,step)
 irfx,irfy,irf_index = irfPlacement(index,dats)
 mini = minimise2D(dats[70],keys[0],x, [0.1,300], [0.00000001,150], [0.001,0.1],irfy[0],irf_index,index[0])
