@@ -650,75 +650,77 @@ def peakEnergyError(cov_mats):
     mean_errors = errsFromCov(cov_mats)[1]
     
     return np.array(mean_errors)
-    
 
-#-------------------------------------- Load Data -----------------------------------#
-    
-#Enter the name of the sample and the corresponding data for the temperature ramp
-sample = 'MAPI'
-tempdata = open("Temp_3.txt",'r')
 
-#Open the data in the required format
-files = openData(sample,tempdata)
+if __name__ == "__main__":
 
-#------------------------------------ Example Code ---------------------------------#
-PL_data = {}
-for i in range(len(files)):
-    PL_data[ '%02d' % files[i][0]] = np.loadtxt("%02s"%files[i][1])
-    
-    
-maxx = []
-maxy = []
-temps = [i for i,j in files]
-colormap = plt.cm.gist_ncar
-plt.gca().set_color_cycle([colormap(i) for i in np.linspace(0, 0.9, len(temps))])
+    #-------------------------------------- Load Data -----------------------------------#
 
-keys = PL_data.keys()
-keys = [int(i) for i in keys]
+    #Enter the name of the sample and the corresponding data for the temperature ramp
+    sample = 'MAPI'
+    tempdata = open("Temp_3.txt",'r')
 
-keys = sorted(keys)[0::]
-print keys
+    #Open the data in the required format
+    files = openData(sample,tempdata)
 
-for m in sorted(keys):
-    m = str(m)
-    
-    x = [i for i,j,k in PL_data[m]]
-    x = wavetoeV(x)
-    y = [j for i,j,k in PL_data[m]]
-    #y = np.array(y)/max(y)
-    
-    maxy.append(max(y))
-    maxx.append(x[list(y).index(max(y))])
-    plt.plot(x,y,label = str(m), linewidth = 1.0)
+    #------------------------------------ Example Code ---------------------------------#
+    PL_data = {}
+    for i in range(len(files)):
+        PL_data[ '%02d' % files[i][0]] = np.loadtxt("%02s"%files[i][1])
 
-plt.ylabel('PL', size= 12)
-plt.xlabel('Energy / eV', size= 12
-)
-#plt.plot(maxx, maxy, 'x')
 
-#plt.legend()
-plt.show()
+    maxx = []
+    maxy = []
+    temps = [i for i,j in files]
+    colormap = plt.cm.gist_ncar
+    plt.gca().set_color_cycle([colormap(i) for i in np.linspace(0, 0.9, len(temps))])
 
-   
-"""
-#Set the temperatures and wavelengths available
-temps = [i for i,j in files]
-interval = [1.4,1.75]
-tem = temps[10:11]
-tol = 50
-step = 0.005
-    
-a = peaks_FWHM_plot(PL_data,temps,interval,temps[8:9],tol,step)
-err1 = FWHMErr(a[3])
-err2 = peakEnergyError(a[3])
+    keys = PL_data.keys()
+    keys = [int(i) for i in keys]
 
-plt.figure()
-plt.title('MAPI Peak Width')
-plt.errorbar(a[0],a[1],yerr = err1, fmt='o')
-plt.xlabel('Temperature/ K')
-plt.ylabel('FWHM/ eV')
-plt.show()
-"""
+    keys = sorted(keys)[0::]
+    print keys
+
+    for m in sorted(keys):
+        m = str(m)
+
+        x = [i for i,j,k in PL_data[m]]
+        x = wavetoeV(x)
+        y = [j for i,j,k in PL_data[m]]
+        #y = np.array(y)/max(y)
+
+        maxy.append(max(y))
+        maxx.append(x[list(y).index(max(y))])
+        plt.plot(x,y,label = str(m), linewidth = 1.0)
+
+    plt.ylabel('PL', size= 12)
+    plt.xlabel('Energy / eV', size= 12
+    )
+    #plt.plot(maxx, maxy, 'x')
+
+    #plt.legend()
+    plt.show()
+
+
+    """
+    #Set the temperatures and wavelengths available
+    temps = [i for i,j in files]
+    interval = [1.4,1.75]
+    tem = temps[10:11]
+    tol = 50
+    step = 0.005
+
+    a = peaks_FWHM_plot(PL_data,temps,interval,temps[8:9],tol,step)
+    err1 = FWHMErr(a[3])
+    err2 = peakEnergyError(a[3])
+
+    plt.figure()
+    plt.title('MAPI Peak Width')
+    plt.errorbar(a[0],a[1],yerr = err1, fmt='o')
+    plt.xlabel('Temperature/ K')
+    plt.ylabel('FWHM/ eV')
+    plt.show()
+    """
 
 
 
