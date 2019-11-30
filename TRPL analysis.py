@@ -38,6 +38,7 @@ def openFile():
     temperatures = []
     wavelengths = []
     
+    #Split the data into temperature and wavelength data
     files = [re.split('-|_|',file_) for file_ in file_data]
     for labels in files:
         for label in labels:
@@ -58,10 +59,10 @@ def openFile():
 
         new_labels = zip(wavelengths,temperatures,file_data)
     
-    
+        #Create a dict of the data and the available temperature data.
     
         d = {}
-
+    
     
         for i in new_labels:
             if i[0] not in d.keys():
@@ -81,6 +82,7 @@ def openFile():
 
     
 def dataExtraction(wavelength):
+    ""Extract the data from the sdt files, and background files""
     data,bg= openFile()
     keys = data.keys()
 
@@ -88,6 +90,7 @@ def dataExtraction(wavelength):
     new_data = {}
     new_bg = []
     
+    #Extract the data fromt he sdt file structure (variable so need more than one method)
     if len(keys) != 1:
         for i in range(len(data[wavelength])):
             new_data[data[wavelength][i][0]] = SdtFile(data[wavelength][i][1]).data[0][0]
@@ -106,17 +109,20 @@ def dataExtraction(wavelength):
     
     
 def IRF():
+    """Load the instrument response funtion"""
     sdt = SdtFile("irf.sdt").data[0][0]
     return sdt
     
     
 def removeBackground(TRPL_data):
+    """Calculate the background light sample from the TRPL data """
     for key in TRPL_data.keys():
         background = np.mean(TRPL_data[key][110:170])
         TRPL_data[key] = [(i - background) for i in TRPL_data[key]]
     return TRPL_data
     
 def decayIndex(TRPL_data):
+    """Find the index where the TRPL data starts to decay"""
     start_index = []
 
     keys = TRPL_data.keys()
@@ -127,6 +133,7 @@ def decayIndex(TRPL_data):
     
     
 def irfPlacement(start_index,TRPL_data):
+    """Position the IRF to overlap with the TRPL curve"""
     irfxi = np.arange(0,500,500/1024.)
     irfyi = IRF()
     
@@ -147,24 +154,44 @@ def irfPlacement(start_index,TRPL_data):
     
     
 def bi_exp(t,amp1, tau1,amp2,tau2):
+    """biexponential model"""
     return  amp1*np.exp(-t/float(tau1))  + amp2*np.exp(-t/float(tau2))
       
 
 
     
-def minimise4D(TRPLi_data,temp, x, variables, start, steps, irfyi, irf_index, TRPL_index):
+def minimise4D(TRPLi_data,temp, x, variables, start, steps, irfyi, irf_index, TRPL_index, plot = False):
+    """
+    finding the residual of the convolution between the IRF and the TRPL curve and minimising it,
+    for all data
+    
+    temp: int
+        temp of trpl data being analysed
+    x: np.array
+        range of values to fit biexp function to
+    variables: list
+        position of the variables
+    start: list of ints
+        where to start the value range for each variable
+    steps: list of ints
+        how many values of each variable to test
+    
+    """
+       
+    
     amp1 = np.arange(start[0],variables[0],steps[0]) #sort this later
     tau1 = np.arange(start[1],variables[1],steps[1])
     amp2 = np.arange(start[2],variables[2],steps[2])
     tau2 = np.arange(start[3],variables[3],steps[3])
 
+    #All data ends after 500 data points
     end = 500
 
     
     resid = []
     
     
-    
+    #Convolute the two functions and find the residual between the predicted curve (predicted params) and actual curve
     for i in range(amp1.size):
         print str(round(i*100/float(amp1.size),1)) + ' % Completed'
         for j in range(tau1.size):
@@ -179,36 +206,39 @@ def minimise4D(TRPLi_data,temp, x, variables, start, steps, irfyi, irf_index, TR
                     convo = convolution[max_convolve:max_convolve+end]
             
                     residual = np.sum((convo-TRPL)*(convo-TRPL))
-    
+                    #store all the parameters for each residual
                     resid.append((residual,i,j,k,l))
-            
-    plt.figure()
     
-    chis = [i for i,j,k,l,m in resid]
-    least_index = chis.index(min(chis))
-    final_residual = resid[least_index]
-    fit_error = np.sqrt(min(chis)/(end-2))
-    convolution = np.convolve(irfyi, bi_exp(x,amp1[final_residual[1]],tau1[final_residual[2]],amp2[final_residual[3]],tau2[final_residual[4]]))
-    max_convolve = list(convolution).index(max(convolution))
-    
-    plt.title(str(temp)+"K")
-    plt.plot(TRPLi_data[TRPL_index:TRPL_index+end], '.')
-    plt.plot(convolution[max_convolve:max_convolve+end], label = "Amp1: " + str(amp1[final_residual[1]])+" \n Tau1: " + str(tau1[final_residual[2]])+" \n Amp2: " + str(amp2[final_residual[3]])+" \n Tau2: " + str(tau2[final_residual[4]]))
-    
-    plt.xlabel('Time/ ns')
-    plt.ylabel('Counts')
-    print "Amplitude1: " + str(amp1[final_residual[1]])+"\n Tau1: " + str(tau1[final_residual[2]])+"\n Amplitude2: " + str(amp2[final_residual[3]])+"\n Tau2: " + str(tau2[final_residual[4]])
-    
-    plt.legend()
-    plt.show()
+    if plot == True:
+        plt.figure()
+
+        chis = [i for i,j,k,l,m in resid]
+        least_index = chis.index(min(chis))
+        final_residual = resid[least_index]
+        fit_error = np.sqrt(min(chis)/(end-2))
+        convolution = np.convolve(irfyi, bi_exp(x,amp1[final_residual[1]],tau1[final_residual[2]],amp2[final_residual[3]],tau2[final_residual[4]]))
+        max_convolve = list(convolution).index(max(convolution))
+
+        plt.title(str(temp)+"K")
+        plt.plot(TRPLi_data[TRPL_index:TRPL_index+end], '.')
+        plt.plot(convolution[max_convolve:max_convolve+end], label = "Amp1: " + str(amp1[final_residual[1]])+" \n Tau1: " + str(tau1[final_residual[2]])+" \n Amp2: " + str(amp2[final_residual[3]])+" \n Tau2: " + str(tau2[final_residual[4]]))
+
+        plt.xlabel('Time/ ns')
+        plt.ylabel('Counts')
+        print "Amplitude1: " + str(amp1[final_residual[1]])+"\n Tau1: " + str(tau1[final_residual[2]])+"\n Amplitude2: " + str(amp2[final_residual[3]])+"\n Tau2: " + str(tau2[final_residual[4]])
+
+        plt.legend()
+        plt.show()
     
     return final_residual, fit_error
     
     
 def mono_exp(t, amp, tau):
+    """mono exponential function"""
     return amp*np.exp(-t/float(tau))
     
-def minimise2D(TRPLi_data,temp, x, variables, start, steps, irfyi, irf_index, TRPL_index):
+def minimise2D(TRPLi_data,temp, x, variables, start, steps, irfyi, irf_index, TRPL_index, plot = True):
+    """as with minimise 4d, minimise a 2d mono exponential function after convoluting it with the IRF"""
     amp = np.arange(start[0],variables[0],steps[0])
     tau = np.arange(start[1],variables[1],steps[1])
     
@@ -235,60 +265,61 @@ def minimise2D(TRPLi_data,temp, x, variables, start, steps, irfyi, irf_index, TR
             residual = np.sum((convo-TRPL)*(convo-TRPL))
             resid.append((residual,i,j))
             
-    
-    plt.figure()
-    
-    
-    chis = [i for i,j,k in resid]
-    least_index = chis.index(min(chis))
-    fit_error = np.sqrt(min(chis)/(end-2))
-    final_residual = resid[least_index]
-    convolution = np.convolve(irfyi, mono_exp(x,amp[final_residual[1]],tau[final_residual[2]]))
-    max_convolve = list(convolution).index(max(convolution))
-    
-    plt.title(str(temp)+"K")
-    plt.plot(TRPLi_data[TRPL_index:TRPL_index+end],'.')
-    plt.plot(convolution[max_convolve:max_convolve+end], label = "Amp: " + str(amp[final_residual[1]])+" \n Tau: " + str(tau[final_residual[2]]))
-     
-            
-    plt.xlabel('Time/ ns')
-    plt.ylabel('Counts')
-    print "Amplitude1: " + str(amp[final_residual[1]])+"\n Tau1: " + str(tau[final_residual[2]])
-    
-    plt.legend()
-    plt.show()
+    if plot == True:
+        plt.figure()
+
+
+        chis = [i for i,j,k in resid]
+        least_index = chis.index(min(chis))
+        fit_error = np.sqrt(min(chis)/(end-2))
+        final_residual = resid[least_index]
+        convolution = np.convolve(irfyi, mono_exp(x,amp[final_residual[1]],tau[final_residual[2]]))
+        max_convolve = list(convolution).index(max(convolution))
+
+        plt.title(str(temp)+"K")
+        plt.plot(TRPLi_data[TRPL_index:TRPL_index+end],'.')
+        plt.plot(convolution[max_convolve:max_convolve+end], label = "Amp: " + str(amp[final_residual[1]])+" \n Tau: " + str(tau[final_residual[2]]))
+
+
+        plt.xlabel('Time/ ns')
+        plt.ylabel('Counts')
+        print "Amplitude1: " + str(amp[final_residual[1]])+"\n Tau1: " + str(tau[final_residual[2]])
+
+        plt.legend()
+        plt.show()
            
     return final_residual,fit_error
-    
-#LIFETIMES ARE GIVEN IN NATURAL UNITS. CONVERT TO REAL UNITS BY MULTIPLYING BY STEP SIZE
-#-------------------------------- Load the data -------------------------------#
-dats,bg=  dataExtraction(620)
-dats = removeBackground(dats)
-step = 500/1024.
-index = decayIndex(dats)
-keys = dats.keys()
 
-"""
-#Fitting the data with a mono-exponential function example code.
-x = np.arange(0,500,step)
-irfx,irfy,irf_index = irfPlacement(index,dats)
-mini = minimise2D(dats[70],keys[0],x, [0.1,300], [0.00000001,150], [0.001,0.1],irfy[0],irf_index,index[0])
+if __name__ == "__main__":
+    #LIFETIMES ARE GIVEN IN NATURAL UNITS. CONVERT TO REAL UNITS BY MULTIPLYING BY STEP SIZE
+    #-------------------------------- Load the data -------------------------------#
+    dats,bg=  dataExtraction(620)
+    dats = removeBackground(dats)
+    step = 500/1024.
+    index = decayIndex(dats)
+    keys = dats.keys()
 
-#plt.plot(bg[0],'.')
-plt.ylim(0)
-plt.show()
-"""
+    """
+    #Fitting the data with a mono-exponential function example code.
+    x = np.arange(0,500,step)
+    irfx,irfy,irf_index = irfPlacement(index,dats)
+    mini = minimise2D(dats[70],keys[0],x, [0.1,300], [0.00000001,150], [0.001,0.1],irfy[0],irf_index,index[0])
+
+    #plt.plot(bg[0],'.')
+    plt.ylim(0)
+    plt.show()
+    """
 
 
-# Biexponential Fitting
+    # Biexponential Fitting
 
-x = np.arange(0,500,step)
-keys = dats.keys()
-irfx,irfy,irf_index = irfPlacement(index,dats)
-    
-mini = minimise4D(dats[150],keys[4],x, [0.1,1,1.0,1], [0.000001,0.000001,0.000001,0.000001], [0.01,0.1,0.1,0.1],irfy[0],irf_index,index[0])
+    x = np.arange(0,500,step)
+    keys = dats.keys()
+    irfx,irfy,irf_index = irfPlacement(index,dats)
 
-# [1.0,100,1.0,100], [0.000001,0.000001,0.000001,0.000001], [0.1,10,0.1,10]
+    mini = minimise4D(dats[150],keys[4],x, [0.1,1,1.0,1], [0.000001,0.000001,0.000001,0.000001], [0.01,0.1,0.1,0.1],irfy[0],irf_index,index[0])
+
+    # [1.0,100,1.0,100], [0.000001,0.000001,0.000001,0.000001], [0.1,10,0.1,10]
 
 
 
